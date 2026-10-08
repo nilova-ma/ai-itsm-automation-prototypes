@@ -1,0 +1,315 @@
+{
+  "name": "ai-ticket-router-with-pii-masking",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Classification & Routing (Main)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA/edit#gid=0"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -16
+      ],
+      "id": "97a88c0d-6e59-4f00-9214-f844b91b4034",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "p6OpZph7PR9kR9fa",
+          "name": "Google Sheets Trigger account 6052272"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "openai/gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "OPENAI/GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Ты — AI-ассистент для маршрутизации тикетов поддержки.\n  Проанализируй запрос и определи категорию, приоритет и команду.\n  \n  Категории: ЭДО, Авторизация, Оплата, Железо\n  Приоритеты: Low, Medium, High, Critical\n  Команды: L1, Финансы, DevOps\n  \n  Ответь ТОЛЬКО валидным JSON без markdown:\n  {\"category\": \"...\", \"priority\": \"...\", \"team\": \"...\"}"
+            },
+            {
+              "content": "={{ $json.Очищенное_описание }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "cca8511b-d68f-4015-8699-868f8feb8d20",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "t5FldK1LADiVqQLA",
+          "name": "OpenAI account 689"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item;\nconst aiData = item.json.output[0].content[0].text;\nconst rowId = $('Code in JavaScript1').item.json.ID;\n\n// Сохраняем очищенное описание из первой ноды\nconst cleanedDesc = $('Code in JavaScript1').item.json.Очищенное_описание;\n\nitem.json.category = aiData.category;\nitem.json.priority = aiData.priority;\nitem.json.team = aiData.team;\nitem.json.status = \"AI Маршрутизирован\";\nitem.json.ID = String(rowId);\nitem.json.Очищенное_описание = cleanedDesc; //  ДОБАВИТЬ ЭТУ СТРОКУ\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -16
+      ],
+      "id": "235f1844-86fd-41a1-a017-45811bf0ddf8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Получаем текущий элемент\nconst item = $input.item;\n\n// Берем описание\nlet description = item.json.Описание;\n\n// Заменяем email на [EMAIL]\ndescription = description.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g, '[EMAIL]');\n\n// Заменяем телефоны на [PHONE]\ndescription = description.replace(/(\\+7|8)[\\s\\-]?\\(?\\d{3}\\)?[\\s\\-]?\\d{3}[\\s\\-]?\\d{2}[\\s\\-]?\\d{2}/g, '[PHONE]');\n\n// Добавляем очищенное описание к существующему элементу\nitem.json.Очищенное_описание = description;\n\n// Возвращаем модифицированный элемент\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        -16
+      ],
+      "id": "4efab119-3e68-4a65-91c5-ba3809753ee0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA",
+          "mode": "list",
+          "cachedResultName": "AI Ticket Classification & Routing (Main)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Лист1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q_VPXsWQwepwS1VsY609h8pcsaFl8chLTB040bFy9kA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Категория": "={{ $json.category }}",
+            "Приоритет": "={{ $json.priority }}",
+            "Команда": "={{ $json.team }}",
+            "Статус": "AI Маршрутизирован",
+            "ID": "={{ $json.ID }}",
+            "Очищенное_описание": "={{ $json['Очищенное_описание'] }}"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Описание",
+              "displayName": "Описание",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Категория",
+              "displayName": "Категория",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Приоритет",
+              "displayName": "Приоритет",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Команда",
+              "displayName": "Команда",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Статус",
+              "displayName": "Статус",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Очищенное_описание",
+              "displayName": "Очищенное_описание",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "locationDefine": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        464,
+        -16
+      ],
+      "id": "849a8837-34cd-4327-9bc1-bb6e1bf74504",
+      "name": "Update row in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fNpYhv2kK4mq8YHX",
+          "name": "Google Sheets account 8062350"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0de10531-eb52-4ebc-87e0-58fd244ed7f9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f4300700b5a89163b88ad6a908ff9e3076c705e8b03a3f40f03ff2f29f7e4289"
+  },
+  "nodeGroups": [],
+  "id": "kh9PMiSOG1HTgAQ0",
+  "tags": []
+}
